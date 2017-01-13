@@ -1,0 +1,200 @@
+
+/*
+ ADXL3xx
+
+ Reads an Analog Devices ADXL3xx accelerometer and communicates the
+ acceleration to the computer.  The pins used are designed to be easily
+ compatible with the breakout boards from Sparkfun, available from:
+ http://www.sparkfun.com/commerce/categories.php?c=80
+
+ http://www.arduino.cc/en/Tutorial/ADXL3xx
+
+ The circuit:
+ analog 0: accelerometer self test
+ analog 1: z-axis
+ analog 2: y-axis
+ analog 3: x-axis
+ analog 4: ground
+ analog 5: vcc
+
+ created 2 Jul 2008
+ by David A. Mellis
+ modified 30 Aug 2011
+ by Tom Igoe
+
+ This example code is in the public domain.
+
+*/
+
+// these constants describe the pins. They won't change:
+const int groundpin = 18;             // analog input pin 4 -- ground
+const int powerpin = 19;              // analog input pin 5 -- voltage
+const int xpin = A2;                  // x-axis of the accelerometer
+const int ypin = A1;                  // y-axis
+const int zpin = A0;                  // z-axis (only on 3-axis models)
+
+int analogValueX = 0;
+int analogValueY = 0;
+int analogValueZ = 0;
+
+int valueXStart = 0;
+int valueXFinish = 0;
+
+//Just to test fix values
+ int minReadingX = 280;
+ int medValueX = 0;
+ int maxReadingX = 405;
+
+ int minAcc = 0;
+ int maxAcc = 70;
+
+ int mapMaxCycle = 255;
+ int mapMinCycle = 0;
+
+ int analogValue = 0;
+
+int num = 10;
+int peakLoops = 0;
+int contLoops = 0;
+
+int acc = 0;
+int accAux = 0;
+
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+#define PIN 6
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(7, PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() {
+  // initialize the serial communications:
+  Serial.begin(9600);
+  peakLoops = num * 20;
+  // Provide ground and power by using the analog inputs as normal
+  // digital pins.  This makes it possible to directly connect the
+  // breakout board to the Arduino.  If you use the normal 5V and
+  // GND pins on the Arduino, you can remove these lines.
+  pinMode(groundpin, OUTPUT);
+  pinMode(powerpin, OUTPUT);
+  digitalWrite(groundpin, LOW);
+  digitalWrite(powerpin, HIGH);
+
+  //medValueX = minReadingX+0.5*(maxReadingX - minReadingX);
+
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+}
+
+void loop() {
+  // print the sensor values:
+  
+  for(int i = 0; i < num; i++){
+    analogValueX += analogRead(xpin);
+    analogValueY += analogRead(ypin);
+    analogValueZ += analogRead(zpin);
+    
+    delay(1);
+  }
+
+  analogValueX = analogValueX/num;
+  analogValueY = analogValueY/num;
+  analogValueZ = analogValueZ/num;
+
+  analogValue = analogValueX;
+  analogValue = constrain(analogValue, minReadingX, maxReadingX);
+
+  if (contLoops == 0){
+     valueXStart = analogValue;
+  }
+
+  contLoops = contLoops + num;
+
+  //Serial.print(analogValue);
+  // print a tab between values:
+  //Serial.print("\t");
+  //Serial.print(analogValueY);
+  // print a tab between values:
+  //Serial.print("\t");
+  //Serial.print(analogValueZ);
+  //Serial.println();
+  // delay before next reading:
+
+  if (contLoops >= peakLoops){
+    contLoops = 0;
+    //valueXFinish = (255 * abs(analogValue - valueXStart))/(maxReadingX - )
+    accAux = abs(analogValue - valueXStart);
+    
+    Serial.print("Original  = " ); 
+    Serial.print(accAux);  
+
+    acc = accAux;
+    acc = constrain(acc, minAcc, maxAcc);
+
+    Serial.print(" analogValue X = " ); 
+    Serial.print(acc);  
+
+    accAux = map(acc, minAcc, maxAcc, mapMinCycle, mapMaxCycle);
+    accAux = constrain(accAux, mapMinCycle, mapMaxCycle);  
+    
+    Serial.print(" scaled to " );
+    Serial.print(accAux, DEC);
+    Serial.println();
+
+    if (accAux < 3){
+      accAux = 3;
+    }
+    
+    colorWipe(strip.Color(255, 255, 0), 1, accAux);
+    
+  }
+
+  analogValueX = 0;
+  analogValueY = 0;
+  analogValueZ = 0;
+  
+}
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+}
+
+void colorWipe(uint32_t c, uint8_t wait, int bright) {
+  strip.setBrightness(bright);
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}

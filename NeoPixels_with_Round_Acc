@@ -1,0 +1,153 @@
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+#define PIN 6
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(7, PIN, NEO_GRB + NEO_KHZ800);
+
+int minReadingX = 750; // High value to force the minimum 
+int maxReadingX = 0; // Low value to force the maximum
+
+int minReadingY = 750;
+int maxReadingY = 0;
+
+int analogValue = 0;
+int analogValueX = 0;
+int analogValueY = 0;
+
+int analogOutX;
+int analogOutY;
+int numI = 20;
+
+// these constants describe the pins. They won't change:
+const int xpin = A2;                  // x-axis of the accelerometer
+const int ypin = A1;                  // y-axis
+const int zpin = A0;                  // z-axis (only on 3-axis models)
+
+void setup() {
+  // initialize the serial communications:
+  Serial.begin(9600);
+
+  // Provide ground and power by using the analog inputs as normal
+  // digital pins.  This makes it possible to directly connect the
+  // breakout board to the Arduino.  If you use the normal 5V and
+  // GND pins on the Arduino, you can remove these lines.
+
+  //Just to test fix values
+  minReadingX = 296;
+  maxReadingX = 414;
+
+  minReadingY = 273;
+  maxReadingY = 420;
+  
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+}
+
+void loop() {
+
+  //To smooth the values
+  for(int i = 0; i < numI; i++){
+    analogValueX += analogRead(xpin);
+    analogValueY += analogRead(ypin);
+    
+    delay(1);
+  }
+
+  analogValueX = analogValueX/numI;
+  analogValueY = analogValueY/numI;
+  
+  Serial.print("Original X = " ); 
+  Serial.print(analogValueX);  
+
+  
+  analogValue = analogValueX;
+  analogValue = constrain(analogValue, minReadingX, maxReadingX);
+
+  Serial.print(" analogValue X = " ); 
+  Serial.print(analogValueX);  
+
+  analogOutX = map(analogValue, minReadingX, maxReadingX, 0, 255);
+  analogOutX = constrain(analogOutX, 0, 255);  
+
+  float a = analogOutX;
+  Serial.print(" scaled to " );
+  Serial.print(analogOutX, DEC);
+  Serial.println();
+
+  Serial.print("Original Y = " ); 
+  Serial.print(analogValueY);
+  
+  analogValue = analogValueY;
+  analogValue = constrain(analogValue, minReadingY, maxReadingY);
+  
+  Serial.print(" analogValue Y = " ); 
+  Serial.print(analogValue);  
+
+  analogOutY = map(analogValue, minReadingY, maxReadingY, 0, 255);
+  analogOutY = constrain(analogOutY, 0, 255);
+
+  float b = analogOutY;
+  Serial.print(" scaled to " );
+  Serial.print(analogOutY, DEC);
+  Serial.println();
+
+
+  if (a < 1 && b < 1){
+    rainbowCycle(1);
+  }
+  else{
+    //colorWipe(strip.Color(analogOutX, analogOutY, analogOutZ), 1);
+
+    if(analogOutY <= 5){
+      analogOutY = analogOutY + 10;
+    }
+
+    colorWipe(strip.Color(255, 255, 0), 1, analogOutY);
+
+  }
+
+  analogValueX = 0;
+  analogValueY = 0;
+  
+  delay(10);
+}
+
+void colorWipe(uint32_t c, uint8_t wait, int bright) {
+  strip.setBrightness(bright);
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
