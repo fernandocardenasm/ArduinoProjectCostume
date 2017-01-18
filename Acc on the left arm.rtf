@@ -1,0 +1,172 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf760
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+\
+#include <Adafruit_NeoPixel.h>\
+#ifdef __AVR__\
+  #include <avr/power.h>\
+#endif\
+\
+//Pins for the NeoPixels\
+#define PINLEFTARM 6 // The PIN that gets affected by the values from the acc in the back\
+int numNeoPixelsArm = 7; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
+\
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(numNeoPixelsArm, PINLEFTARM, NEO_GRB + NEO_KHZ800);\
+\
+//Variables for all the accellerometers\
+int num = 20; //Iterations to smooth the raw values from the acc\
+\
+int startTimeCount = 0; //Tracks when a new cycle starts\
+int timeCount = 400;  //Tracks how many milliseconds have passed in total.\
+int timePlus = 400; //Defines how many milliseconds lasts a cycle\
+int time = 0; //It is update with the value from millis()\
+\
+//Variables that both accelerometers on the arms use\
+  //For both X Axis\
+ int minReadingXArm = 290; \
+ int maxReadingXArm = 405;\
+\
+ int minAccArm = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
+ int maxAccArm = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
+\
+ int mapMinAccArm = 0; //The minimum value that accBack may have at the end\
+ int mapMaxAccArm = 255; //The maximum value that accBack may have at the end\
+\
+  //For both Y Axis\
+\
+ int minReadingYArm = 273; \
+ int maxReadingYArm = 420;\
+\
+ int mapMinHeightArm = 0;\
+ int mapMaxHeightArm = 255;\
+ \
+//For the accelerometer on the Left Arm\
+\
+//X Axis\
+const int xpinLeft = A0;  //x axis of\
+\
+int analogValueXLeft = 0; //has the average value of the axis after a "num" number of iterations\
+\
+int valueXStartLeft = 0; //Tracks the value in the start of every new cycle\
+\
+int accLeft = 0; //The final value that it is passed to the NeoPixel Function.\
+//Y Axis\
+const int ypinLeft = A1;  //y axis of the acc\
+\
+int analogValueYLeft = 0;\
+\
+void setup() \{\
+  // initialize the serial communications:\
+  Serial.begin(9600);\
+\
+  strip.begin();\
+  strip.show(); // Initialize all pixels to 'off'\
+\}\
+\
+void loop() \{\
+\
+  for(int i = 0; i < num; i++)\{\
+    analogValueXLeft += analogRead(xpinLeft);  \
+    analogValueYLeft += analogRead(ypinLeft);  \
+    delay(0);\
+  \}\
+\
+  analogValueXLeft = analogValueXLeft/num;\
+  analogValueYLeft = analogValueYLeft/num;\
+\
+  if (startTimeCount == 0)\{\
+    valueXStartLeft = analogValueXLeft;\
+  \}\
+\
+  analogValueXLeft = constrain(analogValueXLeft, minReadingXArm, maxReadingXArm);\
+\
+  time = millis();\
+\
+  //If a certain period of time passes enters the if\
+  //For the X axis in the left and right arms.\
+  //For the X axis on the back.\
+  if (time >= timeCount)\{\
+\
+    accLeft = abs(analogValueXLeft - valueXStartLeft);\
+\
+    accLeft = mapValue(accLeft, minAccArm, maxAccArm, mapMinAccArm, mapMaxAccArm);\
+\
+    if(accLeft <= 5)\{\
+      accLeft = accLeft + 5;\
+    \}\
+\
+    //Add effect\
+    colorWipe(strip.Color(255, 255, 0), 1, accLeft);\
+\
+\
+    //To control the frecuency that it enters the if\
+    timeCount = timeCount + timePlus;\
+    startTimeCount = 0;\
+  \}\
+  else\{\
+    startTimeCount = 1;\
+  \}\
+\
+  //For hands up and down controlled by Y axis in right and left arm\
+  \
+  analogValueYLeft = mapValue(analogValueYLeft, minReadingYArm, maxReadingYArm, mapMinHeightArm, mapMaxHeightArm);\
+\
+  //Reinitilize values\
+  //Left arm\
+  analogValueXLeft = 0;\
+  analogValueYLeft = 0;\
+  \
+\}\
+\
+int mapValue(int value, int minReadingValue, int maxReadingValue, int minMapValue, int maxMapValue) \{\
+\
+  Serial.print("Original Value = " ); \
+  Serial.print(value);  \
+  \
+  int auxValue = 0;\
+  int valueOut = 0;\
+  \
+  auxValue = value;\
+  auxValue = constrain(auxValue, minReadingValue, maxReadingValue);\
+  \
+  Serial.print(" analogValue = " ); \
+  Serial.print(auxValue);  \
+\
+  valueOut = map(auxValue, minReadingValue, maxReadingValue, minMapValue, maxMapValue);\
+  valueOut = constrain(valueOut, minMapValue, maxMapValue);\
+\
+  Serial.print(" scaled to " );\
+  Serial.print(valueOut, DEC);\
+  Serial.println();\
+\
+  return valueOut;\
+\}\
+\
+void colorWipe(uint32_t c, uint8_t wait, int bright) \{\
+  strip.setBrightness(bright);\
+  for(uint16_t i=0; i<strip.numPixels(); i++) \{\
+    strip.setPixelColor(i, c);\
+    strip.show();\
+    delay(wait);\
+  \}\
+\}\
+\
+// Input a value 0 to 255 to get a color value.\
+// The colours are a transition r - g - b - back to r.\
+uint32_t Wheel(byte WheelPos) \{\
+  WheelPos = 255 - WheelPos;\
+  if(WheelPos < 85) \{\
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);\
+  \}\
+  if(WheelPos < 170) \{\
+    WheelPos -= 85;\
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);\
+  \}\
+  WheelPos -= 170;\
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);\
+\}}

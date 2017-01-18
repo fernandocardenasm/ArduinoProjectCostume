@@ -1,0 +1,159 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf760
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 #include <Adafruit_NeoPixel.h>\
+#ifdef __AVR__\
+  #include <avr/power.h>\
+#endif\
+\
+//Pins for the NeoPixels\
+#define PINBACK 6 // The PIN that gets affected by the values from the acc in the back\
+int numNeoPixelsBack = 7; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
+\
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(numNeoPixelsBack, PINBACK, NEO_GRB + NEO_KHZ800);\
+\
+//Variables for all the accellerometers\
+int num = 20; //Iterations to smooth the raw values from the acc\
+\
+int startTimeCount = 0; //Tracks when a new cycle starts\
+int timeCount = 400;  //Tracks how many milliseconds have passed in total.\
+int timePlus = 400; //Defines how many milliseconds lasts a cycle\
+int time = 0; //It is update with the value from millis()\
+ \
+//For the accelerometer on the Back; All the variables end with the word "Back" \
+const int xpinBack = A4;  //x axis of the acc located on the back\
+\
+int analogValueXBack = 0; //has the average value of the axis after a "num" number of iterations\
+\
+int valueXStartBack = 0; //Tracks the value in the start of every new cycle\
+\
+ int minReadingXBack = 290; \
+ int maxReadingXBack = 405;\
+\
+ int minAccBack = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
+ int maxAccBack = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
+\
+ int mapMinCycleBack = 0; //The minimum value that accBack may have at the end\
+ int mapMaxCycleBack = 255; //The maximum value that accBack may have at the end\
+\
+ int accBack = 0; //The final value that it is passed to the NeoPixel Function.\
+\
+\
+\
+void setup() \{\
+  // initialize the serial communications:\
+  Serial.begin(9600);\
+\
+  strip.begin();\
+  strip.show(); // Initialize all pixels to 'off'\
+\}\
+\
+void loop() \{\
+\
+  for(int i = 0; i < num; i++)\{\
+    analogValueXBack += analogRead(xpinBack);    \
+    delay(0);\
+  \}\
+\
+  analogValueXBack = analogValueXBack/num;\
+\
+  if (startTimeCount == 0)\{\
+    valueXStartBack = analogValueXBack;\
+  \}\
+\
+  analogValueXBack = constrain(analogValueXBack, minReadingXBack, maxReadingXBack);\
+\
+  time = millis();\
+\
+  //If a certain period of time passes enters the if\
+  if (time >= timeCount)\{\
+\
+    \
+    accBack = abs(analogValueXBack - valueXStartBack);\
+\
+    accBack = mapValue(accBack, minAccBack, maxAccBack, mapMinCycleBack, mapMaxCycleBack);\
+\
+    if(accBack <= 5)\{\
+      accBack = accBack + 5;\
+    \}\
+    \
+    colorWipe(strip.Color(255, 255, 0), 1, accBack);\
+\
+\
+\
+    //To control the frecuency that it enters the if\
+    timeCount = timeCount + timePlus;\
+    startTimeCount = 0;\
+  \}\
+  else\{\
+    startTimeCount = 1;\
+  \}\
+\
+  analogValueXBack = 0;\
+  \
+  \
+  // print the sensor values:\
+  //Serial.print(analogRead(xpin));\
+  // print a tab between values:\
+  //Serial.print("\\t");\
+  //Serial.print(analogValueY);\
+  // print a tab between values:\
+  //Serial.print("\\t");\
+  //Serial.print(analogRead(zpin));\
+  // delay before next reading:\
+  \
+\}\
+\
+int mapValue(int value, int minReadingValue, int maxReadingValue, int minMapValue, int maxMapValue) \{\
+\
+  Serial.print("Original Value = " ); \
+  Serial.print(value);  \
+  \
+  int auxValue = 0;\
+  int valueOut = 0;\
+  \
+  auxValue = value;\
+  auxValue = constrain(auxValue, minReadingValue, maxReadingValue);\
+  \
+  Serial.print(" analogValue = " ); \
+  Serial.print(auxValue);  \
+\
+  valueOut = map(auxValue, minReadingValue, maxReadingValue, minMapValue, maxMapValue);\
+  valueOut = constrain(valueOut, minMapValue, maxMapValue);\
+\
+  float b = valueOut;\
+  Serial.print(" scaled to " );\
+  Serial.print(valueOut, DEC);\
+  Serial.println();\
+\
+  return valueOut;\
+\}\
+\
+void colorWipe(uint32_t c, uint8_t wait, int bright) \{\
+  strip.setBrightness(bright);\
+  for(uint16_t i=0; i<strip.numPixels(); i++) \{\
+    strip.setPixelColor(i, c);\
+    strip.show();\
+    delay(wait);\
+  \}\
+\}\
+\
+// Input a value 0 to 255 to get a color value.\
+// The colours are a transition r - g - b - back to r.\
+uint32_t Wheel(byte WheelPos) \{\
+  WheelPos = 255 - WheelPos;\
+  if(WheelPos < 85) \{\
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);\
+  \}\
+  if(WheelPos < 170) \{\
+    WheelPos -= 85;\
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);\
+  \}\
+  WheelPos -= 170;\
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);\
+\}\
+}
