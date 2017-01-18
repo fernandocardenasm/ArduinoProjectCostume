@@ -13,10 +13,10 @@
 #endif\
 \
 //Pins for the NeoPixels\
-#define PINBACK 6 // The PIN that gets affected by the values from the acc in the back\
-int numNeoPixelsBack = 7; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
+#define PINRIGHTARM 6 // The PIN that gets affected by the values from the acc in the back\
+int numNeoPixelsArm = 7; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
 \
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(numNeoPixelsBack, PINBACK, NEO_GRB + NEO_KHZ800);\
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(numNeoPixelsArm, PINRIGHTARM, NEO_GRB + NEO_KHZ800);\
 \
 //Variables for all the accellerometers\
 int num = 20; //Iterations to smooth the raw values from the acc\
@@ -25,26 +25,40 @@ int startTimeCount = 0; //Tracks when a new cycle starts\
 int timeCount = 400;  //Tracks how many milliseconds have passed in total.\
 int timePlus = 400; //Defines how many milliseconds lasts a cycle\
 int time = 0; //It is update with the value from millis()\
+\
+//Variables that both accelerometers on the arms use\
+  //For both X Axis\
+ int minReadingXArm = 290; \
+ int maxReadingXArm = 405;\
+\
+ int minAccArm = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
+ int maxAccArm = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
+\
+ int mapMinAccArm = 0; //The minimum value that accBack may have at the end\
+ int mapMaxAccArm = 255; //The maximum value that accBack may have at the end\
+\
+  //For both Y Axis\
+\
+ int minReadingYArm = 273; \
+ int maxReadingYArm = 420;\
+\
+ int mapMinHeightArm = 0;\
+ int mapMaxHeightArm = 255;\
  \
-//For the accelerometer on the Back; All the variables end with the word "Back" \
-const int xpinBack = A4;  //x axis of the acc located on the back\
+//For the accelerometer on the RIGHT Arm\
 \
-int analogValueXBack = 0; //has the average value of the axis after a "num" number of iterations\
+//X Axis\
+const int xpinRight = A2;  //x axis of\
 \
-int valueXStartBack = 0; //Tracks the value in the start of every new cycle\
+int analogValueXRight = 0; //has the average value of the axis after a "num" number of iterations\
 \
- int minReadingXBack = 290; \
- int maxReadingXBack = 405;\
+int valueXStartRight = 0; //Tracks the value in the start of every new cycle\
 \
- int minAccBack = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
- int maxAccBack = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
+int accRight = 0; //The final value that it is passed to the NeoPixel Function.\
+//Y Axis\
+const int ypinRight = A3;  //y axis of the acc\
 \
- int mapMinCycleBack = 0; //The minimum value that accBack may have at the end\
- int mapMaxCycleBack = 255; //The maximum value that accBack may have at the end\
-\
- int accBack = 0; //The final value that it is passed to the NeoPixel Function.\
-\
-\
+int analogValueYRight = 0;\
 \
 void setup() \{\
   // initialize the serial communications:\
@@ -57,33 +71,38 @@ void setup() \{\
 void loop() \{\
 \
   for(int i = 0; i < num; i++)\{\
-    analogValueXBack += analogRead(xpinBack);    \
+    analogValueXRight += analogRead(xpinRight);  \
+    analogValueYRight += analogRead(ypinRight);  \
     delay(0);\
   \}\
 \
-  analogValueXBack = analogValueXBack/num;\
+  analogValueXRight = analogValueXRight/num;\
+  analogValueYRight = analogValueYRight/num;\
 \
   if (startTimeCount == 0)\{\
-    valueXStartBack = analogValueXBack;\
+    valueXStartRight = analogValueXRight;\
   \}\
 \
-  analogValueXBack = constrain(analogValueXBack, minReadingXBack, maxReadingXBack);\
+  analogValueXRight = constrain(analogValueXRight, minReadingXArm, maxReadingXArm);\
 \
   time = millis();\
 \
   //If a certain period of time passes enters the if\
+  //For the X axis in the left and right arms.\
+  //For the X axis on the back.\
   if (time >= timeCount)\{\
 \
-    \
-    accBack = abs(analogValueXBack - valueXStartBack);\
+    accRight = abs(analogValueXRight - valueXStartRight);\
 \
-    accBack = mapValue(accBack, minAccBack, maxAccBack, mapMinCycleBack, mapMaxCycleBack);\
+    accRight = mapValue(accRight, minAccArm, maxAccArm, mapMinAccArm, mapMaxAccArm);\
 \
-    if(accBack <= 5)\{\
-      accBack = accBack + 5;\
+    if(accRight <= 5)\{\
+      accRight = accRight + 5;\
     \}\
-    \
-    colorWipe(strip.Color(255, 255, 0), 1, accBack);\
+\
+    //Add effect\
+    colorWipe(strip.Color(255, 255, 0), 1, accRight);\
+\
 \
     //To control the frecuency that it enters the if\
     timeCount = timeCount + timePlus;\
@@ -93,7 +112,21 @@ void loop() \{\
     startTimeCount = 1;\
   \}\
 \
-  analogValueXBack = 0;\
+  //For hands up and down controlled by Y axis in right and left arm\
+  \
+  analogValueYRight = mapValue(analogValueYRight, minReadingYArm, maxReadingYArm, mapMinHeightArm, mapMaxHeightArm);\
+\
+  if(analogValueYRight <= 5)\{\
+      analogValueYRight = analogValueYRight + 5;\
+  \}\
+  \
+  //Add effect\
+  //colorWipe(strip.Color(255, 255, 0), 1, analogValueYRight);\
+  \
+  //Reinitilize values\
+  //Right arm\
+  analogValueXRight = 0;\
+  analogValueYRight = 0;\
   \
 \}\
 \
@@ -114,7 +147,6 @@ int mapValue(int value, int minReadingValue, int maxReadingValue, int minMapValu
   valueOut = map(auxValue, minReadingValue, maxReadingValue, minMapValue, maxMapValue);\
   valueOut = constrain(valueOut, minMapValue, maxMapValue);\
 \
-  float b = valueOut;\
   Serial.print(" scaled to " );\
   Serial.print(valueOut, DEC);\
   Serial.println();\
@@ -144,6 +176,4 @@ uint32_t Wheel(byte WheelPos) \{\
   \}\
   WheelPos -= 170;\
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);\
-\}\
-\
-}
+\}}
