@@ -11,14 +11,43 @@
   #include <avr/power.h>\
 #endif\
 \
-//Pins for the NeoPixels\
-#define PINRIGHTARM 6 // The PIN that gets affected by the values from the acc in the back\
-int numNeoPixelsArm = 7; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
+//Left Arm\
+//X\
+#define PINARMLEFTX 3 // The PIN that gets affected by the values from the acc in the back\
+//Y\
+#define PINARMLEFTY 5 // The PIN that gets affected by the values from the acc in the back\
 \
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(numNeoPixelsArm, PINRIGHTARM, NEO_GRB + NEO_KHZ800);\
+//Right Arm\
+//X\
+#define PINARMRIGHTX 6 // The PIN that gets affected by the values from the acc in the back\
+//Y\
+#define PINARMRIGHTY 9 // The PIN that gets affected by the values from the acc in the back\
+\
+//Back\
+#define PINBACK 11 // The PIN that gets affected by the values from the acc in the back\
+\
+//Both arms\
+int numNeoPixelsArm = 8; //The number of pixels that the NEO Pixels controlled by the acc on the arm has.\
+//Back\
+int numNeoPixelsBack = 8; //The number of pixels that the NEO Pixels controlled by the acc on the back has.\
+\
+//Left Arm\
+//X\
+Adafruit_NeoPixel stripLeftX = Adafruit_NeoPixel(numNeoPixelsArm, PINARMLEFTX, NEO_GRB + NEO_KHZ800);\
+//Y\
+Adafruit_NeoPixel stripLeftY = Adafruit_NeoPixel(numNeoPixelsArm, PINARMLEFTY, NEO_GRB + NEO_KHZ800);\
+\
+//Right Arm\
+//X\
+Adafruit_NeoPixel stripRightX = Adafruit_NeoPixel(numNeoPixelsArm, PINARMRIGHTX, NEO_GRB + NEO_KHZ800);\
+//Y\
+Adafruit_NeoPixel stripRightY = Adafruit_NeoPixel(numNeoPixelsArm, PINARMRIGHTY, NEO_GRB + NEO_KHZ800);\
+\
+Adafruit_NeoPixel stripBack = Adafruit_NeoPixel(numNeoPixelsBack, PINBACK, NEO_GRB + NEO_KHZ800);\
 \
 //Variables for all the accellerometers\
 int num = 20; //Iterations to smooth the raw values from the acc\
+int counter = 0; //aux value to to show the chasing lighting efecct.\
 \
 int startTimeCount = 0; //Tracks when a new cycle starts\
 int timeCount = 400;  //Tracks how many milliseconds have passed in total.\
@@ -26,7 +55,8 @@ int timePlus = 400; //Defines how many milliseconds lasts a cycle\
 int time = 0; //It is update with the value from millis()\
 \
 //Variables that both accelerometers on the arms use\
-  //For both X Axis\
+ //For both X Axis on the arms\
+  \
  int minReadingXArm = 290; \
  int maxReadingXArm = 405;\
 \
@@ -36,13 +66,26 @@ int time = 0; //It is update with the value from millis()\
  int mapMinAccArm = 0; //The minimum value that accBack may have at the end\
  int mapMaxAccArm = 255; //The maximum value that accBack may have at the end\
 \
-  //For both Y Axis\
+ float animationSpeedArm = 0.05;\
+\
+  //For both Y Axis on the arms\
 \
  int minReadingYArm = 273; \
  int maxReadingYArm = 420;\
 \
  int mapMinHeightArm = 0;\
  int mapMaxHeightArm = 255;\
+\
+ //For the X on the back\
+\
+ int minReadingXBack = 290; \
+ int maxReadingXBack = 405;\
+\
+ int minAccBack = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
+ int maxAccBack = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
+\
+ int mapMinAccBack = 0; //The minimum value that accBack may have at the end\
+ int mapMaxAccBack = 255; //The maximum value that accBack may have at the end\
 \
 //For the accelerometer on the LEFT Arm. All the variables end with the word "Left"\
 \
@@ -82,15 +125,6 @@ int analogValueXBack = 0; //has the average value of the axis after a "num" numb
 \
 int valueXStartBack = 0; //Tracks the value in the start of every new cycle\
 \
- int minReadingXBack = 290; \
- int maxReadingXBack = 405;\
-\
- int minAccBack = 0; //The minimum value that abs(endCycleValue - initCycleValue) may give\
- int maxAccBack = 100; //The maximum value that abs(endCycleValue - initCycleValue) may give\
-\
- int mapMinCycleBack = 0; //The minimum value that accBack may have at the end\
- int mapMaxCycleBack = 255; //The maximum value that accBack may have at the end\
-\
  int accBack = 0; //The final value that it is passed to the NeoPixel Function.\
 \
 \
@@ -98,12 +132,60 @@ void setup() \{\
   // initialize the serial communications:\
   Serial.begin(9600);\
 \
-  strip.begin();\
-  strip.show(); // Initialize all pixels to 'off'\
+  stripLeftX.begin();\
+  stripLeftX.show(); // Initialize all pixels to 'off'\
+\
+  stripLeftY.begin();\
+  stripLeftY.show(); // Initialize all pixels to 'off'\
+\
+  stripRightX.begin();\
+  stripRightX.show(); // Initialize all pixels to 'off'\
+\
+  stripRightY.begin();\
+  stripRightY.show(); // Initialize all pixels to 'off'\
+\
+  stripBack.begin();\
+  stripBack.show(); // Initialize all pixels to 'off'\
 \}\
 \
 void loop() \{\
 \
+  counter++;\
+\
+  //setChasingLight(stripLeftX, numNeoPixelsArm, animationSpeedArm, counter);\
+\
+  //Left Arm X\
+  for(int i=0;i<numNeoPixelsArm ;i++)\{\
+    float sine = sin((i*TWO_PI/numNeoPixelsArm)+counter*animationSpeedArm);\
+    float phase=constrain(sine,0,1);\
+    \
+    //pixels.Color takes RGB values, from 0,0,0 up to 255,255,255\
+    stripLeftX.setPixelColor(i, stripLeftX.Color(100*phase,255*phase,255*phase)); // Moderately bright green color.\
+    \
+    stripLeftX.show(); // This sends the updated pixel color to the hardware.\
+\
+    //delay(0); // Delay for a period of time (in milliseconds).\
+   \}\
+\
+   //Right arm X\
+   for(int i=0;i<numNeoPixelsArm ;i++)\{\
+    float sine = sin((i*TWO_PI/numNeoPixelsArm)+counter*animationSpeedArm);\
+    float phase=constrain(sine,0,1);\
+    \
+    //pixels.Color takes RGB values, from 0,0,0 up to 255,255,255\
+    stripRightX.setPixelColor(i, stripRightX.Color(100*phase,255*phase,255*phase)); // Moderately bright green color.\
+    \
+    stripRightX.show(); // This sends the updated pixel color to the hardware.\
+\
+    //delay(0); // Delay for a period of time (in milliseconds).\
+   \}\
+   \
+\
+  \
+  //setChasingLight(stripLeftX, numNeoPixelsBack, animationSpeedArm, counter);\
+  //setChasingLight(stripRightX, numNeoPixelsBack, animationSpeedArm, counter);\
+\
+  \
   for(int i = 0; i < num; i++)\{\
 \
     analogValueXLeft += analogRead(xpinLeft);  \
@@ -160,14 +242,15 @@ void loop() \{\
     \}\
 \
     accBack = abs(analogValueXBack - valueXStartBack);\
-    accBack = mapValue(accBack, minAccBack, maxAccBack, mapMinCycleBack, mapMaxCycleBack);\
+    accBack = mapValue(accBack, minAccBack, maxAccBack, mapMinAccBack, mapMaxAccBack);\
 \
     if(accBack <= 5)\{\
       accBack = accBack + 5;\
     \}\
 \
     //Add effect\
-    colorWipe(strip.Color(255, 255, 0), 1, accBack);\
+    //colorWipe(strip.Color(255, 255, 0), 1, accBack);\
+    //colorWipe(stripBack, stripBack.Color(255, 255, 0), accBack);\
 \
 \
     //To control the frecuency that it enters the if\
@@ -248,26 +331,13 @@ int mapValue(int value, int minReadingValue, int maxReadingValue, int minMapValu
   return valueOut;\
 \}\
 \
-void colorWipe(uint32_t c, uint8_t wait, int bright) \{\
-  strip.setBrightness(bright);\
-  for(uint16_t i=0; i<strip.numPixels(); i++) \{\
-    strip.setPixelColor(i, c);\
-    strip.show();\
-    delay(wait);\
+\
+void colorWipe(Adafruit_NeoPixel stripNeoP, uint32_t c, int bright) \{\
+  stripNeoP.begin();\
+  stripNeoP.setBrightness(bright);\
+  for(uint16_t i=0; i<stripNeoP.numPixels(); i++) \{\
+    stripNeoP.setPixelColor(i, c);\
+    stripNeoP.show();\
   \}\
 \}\
-\
-// Input a value 0 to 255 to get a color value.\
-// The colours are a transition r - g - b - back to r.\
-uint32_t Wheel(byte WheelPos) \{\
-  WheelPos = 255 - WheelPos;\
-  if(WheelPos < 85) \{\
-    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);\
-  \}\
-  if(WheelPos < 170) \{\
-    WheelPos -= 85;\
-    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);\
-  \}\
-  WheelPos -= 170;\
-  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);\
-\}}
+}
