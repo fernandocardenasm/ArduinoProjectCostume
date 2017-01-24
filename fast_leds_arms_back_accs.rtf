@@ -35,17 +35,34 @@
 //Define the array of leds for each stripe\
 //Left Arm\
 CRGB stripLeftArm[numNeoPixelsArm];\
+int hueLeftArm = 160; //HSV\
+int satLeftArm = 255;\
+int valLeftArm = 255;\
+\
 //Right arm\
 CRGB stripRightArm[numNeoPixelsArm];\
+int hueRightArm = 0; //HSV\
+int satRightArm = 0;\
+int valRightArm = 0;\
 \
 //Back\
 //Left side\
 CRGB stripLeftBack[numNeoPixelsSideBack];\
+int hueLeftBack = 0; //HSV\
+int satLeftBack = 0;\
+int valLeftBack = 0;\
+\
 //Right side\
 CRGB stripRightBack[numNeoPixelsSideBack];\
+int hueRightBack = 0; //HSV\
+int satRightBack = 0;\
+int valRightBack = 0;\
+\
 //Middle\
 CRGB stripMainBack[numNeoPixelsMainBack];\
-\
+int hueMainBack = 0; //HSV\
+int satMainBack = 0;\
+int valMainBack = 0;\
 \
 //Variables for all the accellerometers\
 int num = 20; //Iterations to smooth the raw values from the acc\
@@ -156,8 +173,8 @@ void loop() \{\
     float sine = sin((i*TWO_PI*4/numNeoPixelsArm)+counter*animationSpeedArm);\
     float phase=constrain(sine,0,1);\
 \
-    stripLeftArm[i] = CRGB( 100*phase, 255*phase, 255*phase);\
-    //stripLeftX[i] = CHSV(160, 255, 255);\
+    //stripLeftArm[i] = CRGB( 100*phase, 255*phase, 255*phase);\
+    stripLeftArm[i] = CHSV(hueLeftArm, satLeftArm, valLeftArm);\
     //pixels.Color takes RGB values, from 0,0,0 up to 255,255,255\
     //stripLeftX.setPixelColor(i, stripLeftX.Color(100*phase,255*phase,255*phase)); // Moderately bright green color.\
     \
